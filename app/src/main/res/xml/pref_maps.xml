@@ -1,0 +1,19 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+
+    <ListPreference
+        android:defaultValue="normal"
+        android:entries="@array/pref_map_types_list_titles"
+        android:entryValues="@array/pref_map_types_list_values"
+        android:key="map_types"
+        android:negativeButtonText="@null"
+        android:positiveButtonText="@null"
+        android:title="@string/pref_title_map_types" />
+
+    <SwitchPreference
+        android:defaultValue="true"
+        android:key="show_traffic"
+        android:title="@string/pref_title_show_traffic" />
+
+
+</PreferenceScreen>

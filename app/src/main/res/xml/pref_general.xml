@@ -1,0 +1,21 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <ListPreference
+        android:defaultValue="metric"
+        android:entries="@array/pref_unit_list_titles"
+        android:entryValues="@array/pref_units_list_values"
+        android:key="units"
+        android:negativeButtonText="@null"
+        android:positiveButtonText="@null"
+        android:title="@string/pref_title_units" />
+
+    <ListPreference
+        android:defaultValue="driving"
+        android:entries="@array/pref_transport_mode_list_titles"
+        android:entryValues="@array/pref_transport_mode_list_values"
+        android:key="transport_mode"
+        android:negativeButtonText="@null"
+        android:positiveButtonText="@null"
+        android:title="@string/pref_title_transport_mode" />
+
+</PreferenceScreen>

@@ -1,0 +1,13 @@
+<preference-headers xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <header
+        android:fragment="assistant.travel.com.activities.SettingsActivity$GeneralPreferenceFragment"
+        android:icon="@drawable/ic_info_black_24dp"
+        android:title="@string/pref_header_general" />
+
+    <header
+        android:fragment="assistant.travel.com.activities.SettingsActivity$MapsPreferenceFragment"
+        android:icon="@drawable/ic_location_on_black_24dp"
+        android:title="@string/pref_header_maps" />
+
+</preference-headers>
