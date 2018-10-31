@@ -16,11 +16,11 @@
 
 package assistant.travel.com.adapters;
 
+import android.support.annotation.NonNull;
 import android.support.v7.widget.RecyclerView;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
-import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import java.util.ArrayList;
@@ -29,23 +29,21 @@ import assistant.travel.com.R;
 import assistant.travel.com.database.Trip;
 
 /**
- *
+ * Adapter for the Trips Recycler View
  */
 
 public class RecyclerAdapterTrips extends RecyclerView.Adapter<RecyclerAdapterTrips.MyViewHolder> {
 
     private ArrayList<Trip> data;
 
-    public class MyViewHolder extends RecyclerView.ViewHolder {
+    class MyViewHolder extends RecyclerView.ViewHolder {
 
         private TextView mTransportMode;
         private TextView mDate;
         private TextView mDistance;
         private TextView mTime;
 
-        RelativeLayout relativeLayout;
-
-        public MyViewHolder(View itemView) {
+        MyViewHolder(View itemView) {
             super(itemView);
 
             mTransportMode = itemView.findViewById(R.id.transport_mode);
@@ -59,19 +57,19 @@ public class RecyclerAdapterTrips extends RecyclerView.Adapter<RecyclerAdapterTr
         this.data = data;
     }
 
+    @NonNull
     @Override
-    public MyViewHolder onCreateViewHolder(ViewGroup parent, int viewType) {
+    public MyViewHolder onCreateViewHolder(@NonNull ViewGroup parent, int viewType) {
         View itemView = LayoutInflater.from(parent.getContext()).inflate(R.layout.recycler_row_trips, parent, false);
         return new MyViewHolder(itemView);
     }
 
     @Override
-    public void onBindViewHolder(MyViewHolder holder, int position) {
-
-        holder.mDistance.setText("Trip Distance: " + data.get(position).getDistance() + " m");
-        holder.mTime.setText("Time Taken: " + data.get(position).getTimeTaken() + " seconds");
-        holder.mDate.setText("Trip Timestamp: " + data.get(position).getStartDateTime());
-        holder.mTransportMode.setText("Transport Mode: " + data.get(position).getTransportMode());
+    public void onBindViewHolder(@NonNull MyViewHolder holder, int position) {
+        holder.mDistance.setText(String.format("Trip Distance: %s m", data.get(position).getDistance()));
+        holder.mTime.setText(String.format("Time Taken: %s seconds", data.get(position).getTimeTaken()));
+        holder.mDate.setText(String.format("Trip Timestamp: %s", data.get(position).getStartDateTime()));
+        holder.mTransportMode.setText(String.format("Transport Mode: %s", data.get(position).getTransportMode()));
     }
 
 

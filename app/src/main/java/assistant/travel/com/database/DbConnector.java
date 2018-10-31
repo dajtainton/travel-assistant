@@ -57,11 +57,6 @@ public class DbConnector {
     private static final String KEY_START_DATETIME = "start-date";
     private static final String KEY_END_DATETIME = "end-date";
 
-    private static final String SUBCOLLECTION_SETTINGS = "settings";
-
-    private static final String KEY_PREFERRED_TRANSPORT = "preferred-transport";
-    private static final String KEY_MEASUREMENT_SYSTEM = "measurement-system";
-
     private FirebaseFirestore db;
     private FirebaseAuth mAuth;
 
@@ -85,56 +80,6 @@ public class DbConnector {
 
         db.collection(COLLECTION_USER).document(mAuth.getCurrentUser().getUid())
                 .collection(SUBCOLLECTION_TRIPS).document().set(newTrip)
-                .addOnSuccessListener(new OnSuccessListener<Void>() {
-                    @Override
-                    public void onSuccess(Void aVoid) {
-
-                    }
-                })
-                .addOnFailureListener(new OnFailureListener() {
-                    @Override
-                    public void onFailure(@NonNull Exception e) {
-                        e.printStackTrace();
-                        Log.d("Database", "Failed");
-                    }
-                });
-    }
-
-    public ArrayList<Trip> fetchTrips() {
-        final ArrayList<Trip> trips = new ArrayList<>();
-
-        db.collection(COLLECTION_USER).document(mAuth.getCurrentUser().getUid()).collection(SUBCOLLECTION_TRIPS)
-                .get()
-                .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-                    @Override
-                    public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                        if (task.isSuccessful()) {
-                            for (QueryDocumentSnapshot document : task.getResult()) {
-                                Trip trip = new Trip();
-                                trip.setDistance(document.getDouble("distance"));
-                                trip.setTimeTaken(document.getDouble("time-taken"));
-                                trip.setStartDateTime(document.getString("start-date"));
-                                trip.setEndDateTime(document.getString("end-date"));
-                                trip.setTransportMode(document.getString("transport-mode"));
-
-                                trips.add(trip);
-
-                            }
-                        }
-                    }
-                });
-
-        return trips;
-    }
-
-    public void addSettings(Settings settings) {
-        Map<String, Object> newSettings = new HashMap<>();
-
-        //newSettings.put(KEY_MEASUREMENT_SYSTEM, settings.isMetricMeasurement());
-        //newSettings.put(KEY_PREFERRED_TRANSPORT, settings.getPreferredTransportMode());
-
-        db.collection(COLLECTION_USER).document(mAuth.getCurrentUser().getUid())
-                .collection(SUBCOLLECTION_SETTINGS).document().set(newSettings)
                 .addOnSuccessListener(new OnSuccessListener<Void>() {
                     @Override
                     public void onSuccess(Void aVoid) {

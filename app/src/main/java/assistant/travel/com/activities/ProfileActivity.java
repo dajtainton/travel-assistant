@@ -19,6 +19,7 @@ package assistant.travel.com.activities;
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.ContentValues;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -28,7 +29,6 @@ import android.database.Cursor;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.net.Uri;
-import android.os.AsyncTask;
 import android.os.Bundle;
 import android.provider.MediaStore;
 import android.support.annotation.NonNull;
@@ -44,24 +44,19 @@ import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.NumberPicker;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
-import com.google.firebase.auth.AuthResult;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.auth.UserProfileChangeRequest;
 
 import java.io.IOException;
-import java.util.Locale;
 
 import assistant.travel.com.R;
 import butterknife.BindView;
 import butterknife.ButterKnife;
-import butterknife.internal.Utils;
 
 public class ProfileActivity extends AppCompatActivity {
 
@@ -84,6 +79,7 @@ public class ProfileActivity extends AppCompatActivity {
 
     private FirebaseAuth mAuth;
     private Uri mPhotoUri;
+    private ProgressDialog mProgressDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -96,19 +92,32 @@ public class ProfileActivity extends AppCompatActivity {
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         mAuth = FirebaseAuth.getInstance();
-        FirebaseUser currentUser = mAuth.getCurrentUser();
-
-        FloatingActionButton fab = findViewById(R.id.fab);
-        fab.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Snackbar.make(view, "Replace with your own action", Snackbar.LENGTH_LONG)
-                        .setAction("Action", null).show();
-            }
-        });
 
         loadUser();
         setOnclickListeners();
+    }
+
+    @Override
+    public void onResume() {
+        super.onResume();
+
+        mProgressDialog = new ProgressDialog(ProfileActivity.this, R.style.AppTheme_Dark_Dialog);
+        mProgressDialog.setIndeterminate(true);
+    }
+
+    private void loadUser() {
+        String displayName = FirebaseAuth.getInstance().getCurrentUser().getDisplayName();
+
+        if(displayName != null) {
+            String[] nameArray = splitDisplayName(displayName);
+            mFirstname.setText(nameArray[0]);
+            mLastname.setText(nameArray[nameArray.length - 1]);
+        }
+    }
+
+    private String[] splitDisplayName(String displayName) {
+        // Uses regex to split the display name into string array
+        return displayName.split("\\s+");
     }
 
     @Override
@@ -119,80 +128,6 @@ public class ProfileActivity extends AppCompatActivity {
                 return true;
             default:
                 return super.onOptionsItemSelected(item);
-        }
-    }
-
-    public static boolean hasPermissions(Context context, String... permissions) {
-        if (context != null && permissions != null) {
-            for (String permission : permissions) {
-                if (ActivityCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
-                    return false;
-                }
-            }
-        }
-        return true;
-    }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        switch (requestCode) {
-            case 3:
-                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    mPhotoUri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, new ContentValues());
-                    Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-                    intent.putExtra(MediaStore.EXTRA_OUTPUT, mPhotoUri);
-                    startActivityForResult(intent, 0);
-                }
-                break;
-        }
-    }
-
-    @Override
-    public void onActivityResult(int requestCode, int resultCode, Intent imageReturnedIntent) {
-        super.onActivityResult(requestCode, resultCode, imageReturnedIntent);
-
-
-        switch (requestCode) {
-            case 0:
-                if (resultCode == RESULT_OK) {
-
-                    try {
-
-                        String[] projection = {
-                                MediaStore.MediaColumns._ID,
-                                MediaStore.Images.ImageColumns.ORIENTATION,
-                                MediaStore.Images.Media.DATA
-                        };
-                        Cursor c = getContentResolver().query(mPhotoUri, projection, null, null, null);
-                        c.moveToFirst();
-                        String photoFileName = c.getString(c.getColumnIndexOrThrow(MediaStore.Images.Media.DATA));
-
-                        Bitmap photo = BitmapFactory.decodeFile(photoFileName);
-                        ///Utils.saveToInternalStorage(getApplicationContext(), photo, "profile");
-                        mProfileImage.setImageBitmap(photo);
-
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
-
-                    /*Bitmap photo = (Bitmap) imageReturnedIntent.getExtras().get("data");
-                    Utils.saveToInternalStorage(getApplicationContext(), photo, "profile");
-                    mProfileImage.setImageBitmap(photo);*/
-                }
-
-                break;
-            case 1:
-                if (resultCode == RESULT_OK) {
-                    try {
-                        Uri selectedImage = imageReturnedIntent.getData();
-                        Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), selectedImage);
-                        //Utils.saveToInternalStorage(getApplicationContext(), bitmap, "profile");
-                        mProfileImage.setImageURI(selectedImage);
-                    } catch (IOException e) {
-                        e.printStackTrace();
-                    }
-                }
-                break;
         }
     }
 
@@ -260,19 +195,24 @@ public class ProfileActivity extends AppCompatActivity {
                     @SuppressLint("StaticFieldLeak")
                     public void onClick(DialogInterface dialog, int whichButton) {
 
+                        mProgressDialog.setMessage("Saving...");
+                        mProgressDialog.show();
+
                         FirebaseUser user = mAuth.getCurrentUser();
                         UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
                                 .setDisplayName(inputText.getText().toString() + " " + mLastname.getText().toString()).build();
 
-                        user.updateProfile(profileUpdates).addOnCompleteListener(new OnCompleteListener<Void>() {
+                        user.updateProfile(profileUpdates)
+                                .addOnCompleteListener(new OnCompleteListener<Void>() {
                             @Override
                             public void onComplete(@NonNull Task<Void> task) {
+                                mProgressDialog.dismiss();
+
                                 if (task.isSuccessful()) {
                                     loadUser();
                                 }
                             }
                         });
-
 
                     }
                 });
@@ -309,14 +249,18 @@ public class ProfileActivity extends AppCompatActivity {
                     @SuppressLint("StaticFieldLeak")
                     public void onClick(DialogInterface dialog, int whichButton) {
 
+                        mProgressDialog.setMessage("Saving...");
+                        mProgressDialog.show();
 
                         FirebaseUser user = mAuth.getCurrentUser();
                         UserProfileChangeRequest profileUpdates = new UserProfileChangeRequest.Builder()
                                 .setDisplayName(mFirstname.getText().toString() + " " + inputText.getText().toString()).build();
 
-                        user.updateProfile(profileUpdates).addOnCompleteListener(new OnCompleteListener<Void>() {
+                        user.updateProfile(profileUpdates)
+                                .addOnCompleteListener(new OnCompleteListener<Void>() {
                             @Override
                             public void onComplete(@NonNull Task<Void> task) {
+                                mProgressDialog.dismiss();
                                 if (task.isSuccessful()) {
                                     loadUser();
                                 }
@@ -335,21 +279,75 @@ public class ProfileActivity extends AppCompatActivity {
                 builder.show();
             }
         });
-
-
     }
 
-    private String[] splitDisplayName(String displayName) {
-
-        return displayName.split("\\s+");
+    public static boolean hasPermissions(Context context, String... permissions) {
+        if (context != null && permissions != null) {
+            for (String permission : permissions) {
+                if (ActivityCompat.checkSelfPermission(context, permission) != PackageManager.PERMISSION_GRANTED) {
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
-    private void loadUser() {
-        String[] nameArray = splitDisplayName(FirebaseAuth.getInstance().getCurrentUser().getDisplayName());
+    @Override
+    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
+        switch (requestCode) {
+            case 3:
+                if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                    mPhotoUri = getContentResolver().insert(MediaStore.Images.Media.EXTERNAL_CONTENT_URI, new ContentValues());
+                    Intent intent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
+                    intent.putExtra(MediaStore.EXTRA_OUTPUT, mPhotoUri);
+                    startActivityForResult(intent, 0);
+                }
+                break;
+        }
+    }
 
-        mFirstname.setText(nameArray[0]);
-        mLastname.setText(nameArray[nameArray.length - 1]);
+    @Override
+    public void onActivityResult(int requestCode, int resultCode, Intent imageReturnedIntent) {
+        super.onActivityResult(requestCode, resultCode, imageReturnedIntent);
 
+
+        switch (requestCode) {
+            case 0:
+                if (resultCode == RESULT_OK) {
+
+                    try {
+
+                        String[] projection = {
+                                MediaStore.MediaColumns._ID,
+                                MediaStore.Images.ImageColumns.ORIENTATION,
+                                MediaStore.Images.Media.DATA
+                        };
+                        Cursor c = getContentResolver().query(mPhotoUri, projection, null, null, null);
+                        c.moveToFirst();
+                        String photoFileName = c.getString(c.getColumnIndexOrThrow(MediaStore.Images.Media.DATA));
+
+                        Bitmap photo = BitmapFactory.decodeFile(photoFileName);
+                        mProfileImage.setImageBitmap(photo);
+
+                    } catch (Exception e) {
+                        e.printStackTrace();
+                    }
+                }
+
+                break;
+            case 1:
+                if (resultCode == RESULT_OK) {
+                    try {
+                        Uri selectedImage = imageReturnedIntent.getData();
+                        Bitmap bitmap = MediaStore.Images.Media.getBitmap(this.getContentResolver(), selectedImage);
+
+                        mProfileImage.setImageURI(selectedImage);
+                    } catch (IOException e) {
+                        e.printStackTrace();
+                    }
+                }
+                break;
+        }
     }
 
 }

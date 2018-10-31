@@ -4,6 +4,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:layout_marginTop="12dp"
     app:layout_behavior="@string/appbar_scrolling_view_behavior"
     tools:context="assistant.travel.com.activities.ProfileActivity"
     tools:showIn="@layout/activity_profile">
@@ -29,7 +30,7 @@
                 android:layout_height="wrap_content"
                 android:layout_margin="16dp"
                 android:layout_weight="1"
-                android:text="Firstname"
+                android:text="@string/firstname"
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
@@ -40,7 +41,6 @@
                 android:layout_margin="16dp"
                 android:layout_weight="1"
                 android:gravity="end"
-                android:text="David"
                 android:textSize="16sp" />
 
         </LinearLayout>
@@ -57,7 +57,7 @@
                 android:layout_height="wrap_content"
                 android:layout_margin="16dp"
                 android:layout_weight="1"
-                android:text="Lastname"
+                android:text="@string/lastname"
                 android:textSize="16sp"
                 android:textStyle="bold" />
 
@@ -68,7 +68,6 @@
                 android:layout_margin="16dp"
                 android:layout_weight="1"
                 android:gravity="end"
-                android:text="Tainton"
                 android:textSize="16sp" />
 
         </LinearLayout>

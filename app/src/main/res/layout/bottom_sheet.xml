@@ -35,7 +35,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="16dp"
-                android:text="Trip Distance: 12km"
                 android:textColor="@color/colorTextSecondary"
                 android:textSize="18sp"
                 android:textStyle="bold" />
@@ -45,7 +44,6 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="12dp"
-                android:text="ETA: 20 minutes"
                 android:textColor="@color/colorTextSecondary"
                 android:textSize="18sp"
                 android:textStyle="bold" />
@@ -57,9 +55,8 @@
             android:layout_width="50dp"
             android:layout_height="50dp"
             android:layout_margin="8dp"
-            android:layout_gravity="clip_vertical"
-            android:layout_weight="1"
-            android:src="@drawable/ic_drive_text_primary_48dp"/>
+            android:layout_gravity="center_vertical"
+            android:layout_weight="1" />
 
     </android.support.v7.widget.LinearLayoutCompat>
 

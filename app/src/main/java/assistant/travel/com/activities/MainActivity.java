@@ -16,8 +16,8 @@
 
 package assistant.travel.com.activities;
 
-import android.Manifest;
 import android.annotation.SuppressLint;
+import android.app.ProgressDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -42,7 +42,6 @@ import android.support.v7.widget.DividerItemDecoration;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.Toolbar;
-import android.text.TextUtils;
 import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
@@ -57,11 +56,11 @@ import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.Status;
+import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.places.Place;
-import com.google.android.gms.location.places.ui.PlaceAutocomplete;
 import com.google.android.gms.location.places.ui.PlaceAutocompleteFragment;
 import com.google.android.gms.location.places.ui.PlaceSelectionListener;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -71,6 +70,9 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.PolylineOptions;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 
@@ -100,11 +102,7 @@ import static android.Manifest.permission.ACCESS_FINE_LOCATION;
 
 
 public class MainActivity extends AppCompatActivity
-        implements NavigationView.OnNavigationItemSelectedListener, GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener, LocationListener, OnMapReadyCallback {
-
-    private TextView mDisplayName;
-    private TextView mUsername;
+        implements NavigationView.OnNavigationItemSelectedListener, OnMapReadyCallback {
 
     @BindView(R.id.place_bottom_sheet)
     LinearLayout mPlaceBottomSheet;
@@ -130,29 +128,25 @@ public class MainActivity extends AppCompatActivity
     @BindView(R.id.directions_recycleview)
     RecyclerView mDirectionsRecyclerView;
 
+    private ProgressDialog mProgressDialog;
 
     private BottomSheetBehavior mDirectionsSheetBehavior;
     private BottomSheetBehavior mPlaceSheetBehavior;
 
+    private FirebaseAuth mAuth;
+
     private SupportMapFragment mMapFragment;
     private GoogleMap mMap;
+
     private PlaceAutocompleteFragment mPlaceAutocompleteFragment;
     private Location mLocation;
     private Trip mCurrentTrip;
-    private GoogleApiClient mGoogleApiClient;
-    private LocationRequest mLocationRequest;
 
-    private FirebaseAuth mAuth;
-
-
-    private long UPDATE_INTERVAL = 15000;  /* 15 secs */
-    private long FASTEST_INTERVAL = 5000; /* 5 secs */
-    private static final int REQUEST_CODE_AUTOCOMPLETE = 1;
     private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
     private boolean mFirstRun = true;
 
 
-    @SuppressLint("ResourceType")
+    @SuppressLint("MissingPermission")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -166,12 +160,21 @@ public class MainActivity extends AppCompatActivity
 
         initBottomSheets();
 
-        mGoogleApiClient = new GoogleApiClient.Builder(this)
-                .addApi(LocationServices.API)
-                .addConnectionCallbacks(this)
-                .addOnConnectionFailedListener(this)
-                .build();
+        FusedLocationProviderClient client =
+                LocationServices.getFusedLocationProviderClient(this);
 
+        // Get the last known location
+        client.getLastLocation()
+                .addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                    @Override
+                    public void onSuccess(Location location) {
+                        // Got last known location. In some rare situations, this can be null.
+                        if (location != null) {
+                            mLocation = location;
+                            mMapFragment.getMapAsync(MainActivity.this);
+                        }
+                    }
+                });
 
         mMapFragment = (SupportMapFragment) getSupportFragmentManager()
                 .findFragmentById(R.id.map);
@@ -188,8 +191,8 @@ public class MainActivity extends AppCompatActivity
         View header = navigationView.getHeaderView(0);
 
         FirebaseUser user = mAuth.getCurrentUser();
-        mDisplayName = header.findViewById(R.id.display_name);
-        mUsername = header.findViewById(R.id.email_address);
+        TextView mDisplayName = header.findViewById(R.id.display_name);
+        TextView mUsername = header.findViewById(R.id.email_address);
         mDisplayName.setText(user.getDisplayName());
         mUsername.setText(user.getEmail());
 
@@ -214,6 +217,7 @@ public class MainActivity extends AppCompatActivity
                         googleMap.animateCamera(CameraUpdateFactory.newLatLngZoom(place.getLatLng(), 15));
 
                         mCurrentTrip = new Trip();
+
                         Location endLocation = new Location("");
                         endLocation.setLongitude(place.getLatLng().longitude);
                         endLocation.setLatitude(place.getLatLng().latitude);
@@ -248,7 +252,6 @@ public class MainActivity extends AppCompatActivity
                             }
                         });
 
-
                     }
                 });
             }
@@ -256,7 +259,6 @@ public class MainActivity extends AppCompatActivity
             @Override
             public void onError(Status status) {
                 Toast.makeText(getApplicationContext(), status.toString(), Toast.LENGTH_SHORT).show();
-
             }
         });
 
@@ -266,11 +268,9 @@ public class MainActivity extends AppCompatActivity
 
         mPlaceSheetBehavior = BottomSheetBehavior.from(mPlaceBottomSheet);
         mPlaceSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
-        /**
-         * bottom sheet state change listener
-         * we are changing button text when sheet changed state
-         * */
 
+        // Bottom sheet state change listener
+        // Changes the google map padding so map controls are not covered by bottom sheet
         mPlaceSheetBehavior.setBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
             @Override
             public void onStateChanged(@NonNull View bottomSheet, int newState) {
@@ -303,16 +303,17 @@ public class MainActivity extends AppCompatActivity
             public void onClick(View view) {
                 mPlaceSheetBehavior.setHideable(true);
                 mPlaceSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
+                mMap.clear();
+                mMap.animateCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(mLocation.getLatitude(), mLocation.getLongitude()), 10));
             }
         });
 
         mDirectionsSheetBehavior = BottomSheetBehavior.from(mDirectionsBottomSheet);
         mDirectionsSheetBehavior.setState(BottomSheetBehavior.STATE_HIDDEN);
 
-        /**
-         * bottom sheet state change listener
-         * we are changing button text when sheet changed state
-         * */
+
+        // Bottom sheet state change listener
+        // Changes the google map padding so map controls are not covered by bottom sheet
         mDirectionsSheetBehavior.setBottomSheetCallback(new BottomSheetBehavior.BottomSheetCallback() {
             @Override
             public void onStateChanged(@NonNull View bottomSheet, int newState) {
@@ -365,11 +366,11 @@ public class MainActivity extends AppCompatActivity
 
     private void saveTrip() {
 
+        // Prompts user to save trip when trip bottom sheet is closed
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
 
         builder.setTitle("Save Trip");
         builder.setMessage("Do you want to save this trip?");
-
         builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
 
             public void onClick(DialogInterface dialog, int which) {
@@ -386,7 +387,6 @@ public class MainActivity extends AppCompatActivity
 
             @Override
             public void onClick(DialogInterface dialog, int which) {
-                // I do not need any action here you might
                 dialog.dismiss();
             }
         });
@@ -396,48 +396,12 @@ public class MainActivity extends AppCompatActivity
 
     }
 
-    /**
-     * Called after the autocomplete activity has finished to return its result.
-     */
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-
-        // Check that the result was from the autocomplete widget.
-        if (requestCode == REQUEST_CODE_AUTOCOMPLETE) {
-            if (resultCode == RESULT_OK) {
-                // Get the user's selected place from the Intent.
-                Place place = PlaceAutocomplete.getPlace(this, data);
-
-
-                // Display attributions if required.
-                CharSequence attributions = place.getAttributions();
-                if (!TextUtils.isEmpty(attributions)) {
-                    //mPlaceAttribution.setText(Html.fromHtml(attributions.toString()));
-                } else {
-                    //mPlaceAttribution.setText("");
-                }
-            } else if (resultCode == PlaceAutocomplete.RESULT_ERROR) {
-                Status status = PlaceAutocomplete.getStatus(this, data);
-            } else if (resultCode == RESULT_CANCELED) {
-                // Indicates that the activity closed before a selection was made. For example if
-                // the user pressed the back button.
-            }
-        }
-    }
-
-
-    @Override
-    protected void onStart() {
-        super.onStart();
-        if (mGoogleApiClient != null) {
-            mGoogleApiClient.connect();
-        }
-    }
-
     @Override
     protected void onResume() {
         super.onResume();
+
+        mProgressDialog = new ProgressDialog(MainActivity.this, R.style.AppTheme_Dark_Dialog);
+        mProgressDialog.setIndeterminate(true);
 
         if (mLocation != null) {
             mMapFragment.getMapAsync(this);
@@ -486,41 +450,6 @@ public class MainActivity extends AppCompatActivity
         }
     }
 
-    @Override
-    public void onConnected(@Nullable Bundle bundle) {
-
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            // TODO: Consider calling
-            //    ActivityCompat#requestPermissions
-            // here to request the missing permissions, and then overriding
-            //   public void onRequestPermissionsResult(int requestCode, String[] permissions,
-            //                                          int[] grantResults)
-            // to handle the case where the user grants the permission. See the documentation
-            // for ActivityCompat#requestPermissions for more details.
-            return;
-        }
-        mLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
-        mMapFragment.getMapAsync(this);
-
-        startLocationUpdates();
-
-    }
-
-    @Override
-    public void onConnectionSuspended(int i) {
-
-    }
-
-    @Override
-    public void onConnectionFailed(@NonNull ConnectionResult connectionResult) {
-
-    }
-
-    @Override
-    public void onLocationChanged(Location location) {
-
-    }
-
     private boolean checkPlayServices() {
         GoogleApiAvailability apiAvailability = GoogleApiAvailability.getInstance();
         int resultCode = apiAvailability.isGooglePlayServicesAvailable(this);
@@ -534,36 +463,6 @@ public class MainActivity extends AppCompatActivity
             return false;
         }
         return true;
-    }
-
-    protected void startLocationUpdates() {
-
-        mLocationRequest = new LocationRequest();
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        mLocationRequest.setInterval(UPDATE_INTERVAL);
-        mLocationRequest.setFastestInterval(FASTEST_INTERVAL);
-        if (ActivityCompat.checkSelfPermission(this, ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            Toast.makeText(getApplicationContext(), "Enable Permissions", Toast.LENGTH_LONG).show();
-        }
-
-        LocationServices.FusedLocationApi.requestLocationUpdates(
-                mGoogleApiClient, mLocationRequest, this);
-
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        stopLocationUpdates();
-    }
-
-
-    public void stopLocationUpdates() {
-        if (mGoogleApiClient.isConnected()) {
-            LocationServices.FusedLocationApi
-                    .removeLocationUpdates(mGoogleApiClient, this);
-            mGoogleApiClient.disconnect();
-        }
     }
 
     @Override
@@ -628,9 +527,16 @@ public class MainActivity extends AppCompatActivity
         FirebaseAuth.getInstance().signOut();
         Intent intent = new Intent(MainActivity.this, LoginActivity.class);
         startActivity(intent);
+        finish();
     }
 
     private class DownloadTask extends AsyncTask<String, String, String> {
+
+        @Override
+        protected void onPreExecute() {
+            mProgressDialog.setMessage("Calculating Route...");
+            mProgressDialog.show();
+        }
 
         @Override
         protected String doInBackground(String... url) {
@@ -738,37 +644,33 @@ public class MainActivity extends AppCompatActivity
 
             // Drawing polyline in the Google Map for the i-th route
             mMap.addPolyline(lineOptions);
+            mProgressDialog.dismiss();
         }
     }
 
     private String getDirectionsUrl(LatLng origin, LatLng dest) {
 
-        // Origin of route
-        String str_origin = "origin=" + origin.latitude + "," + origin.longitude;
-
-        // Destination of route
-        String str_dest = "destination=" + dest.latitude + "," + dest.longitude;
-
         SharedPreferences preferences = PreferenceManager.getDefaultSharedPreferences(this);
+
+        // Origin of route
+        String originLocation = "origin=" + origin.latitude + "," + origin.longitude;
+        // Destination of route
+        String destination = "destination=" + dest.latitude + "," + dest.longitude;
+        // Directions URL request parameters
         String transportMode = preferences.getString("transport_mode", "driving");
         String unitsSettings = preferences.getString("units", "metric");
-        // Sensor enabled
         String sensor = "sensor=true";
         String mode = "mode=" + transportMode;
         String units = "units=" + unitsSettings;
         String apiKey = "key=AIzaSyCDrg5jluYDnwiO6FbfhMVDBkFgxm6k66s";
 
         // Building the parameters to the web service
-        String parameters = str_origin + "&" + units + "&" + str_dest + "&" + sensor + "&" + mode + "&" + apiKey;
+        String parameters = originLocation + "&" + units + "&" + destination + "&" + sensor + "&" + mode + "&" + apiKey;
 
         // Output format
         String output = "json";
 
-        // Building the url to the web service
-        String url = "https://maps.googleapis.com/maps/api/directions/" + output + "?" + parameters;
-
-
-        return url;
+        return "https://maps.googleapis.com/maps/api/directions/" + output + "?" + parameters;
     }
 
     private String downloadUrl(String strUrl) throws IOException {
@@ -777,9 +679,7 @@ public class MainActivity extends AppCompatActivity
         HttpURLConnection urlConnection = null;
         try {
             URL url = new URL(strUrl);
-
             urlConnection = (HttpURLConnection) url.openConnection();
-
             urlConnection.connect();
 
             iStream = urlConnection.getInputStream();
@@ -794,7 +694,6 @@ public class MainActivity extends AppCompatActivity
             }
 
             data = sb.toString();
-
             br.close();
 
         } catch (Exception e) {

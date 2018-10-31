@@ -26,6 +26,7 @@ import android.support.v7.widget.RecyclerView;
 import android.support.v7.widget.helper.ItemTouchHelper;
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.ProgressBar;
 
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
@@ -48,13 +49,13 @@ public class TripHistoryActivity extends AppCompatActivity {
 
     @BindView(R.id.recycler_view)
     RecyclerView mRecyclerView;
-
+    @BindView(R.id.progress_bar)
+    ProgressBar mProgressBar;
     @BindView(R.id.trip_history_layout)
     CoordinatorLayout coordinatorLayout;
 
 
     RecyclerAdapterTrips mAdapter;
-    ArrayList<String> stringArrayList = new ArrayList<>();
 
     private FirebaseFirestore db;
     private FirebaseAuth mAuth;
@@ -82,11 +83,16 @@ public class TripHistoryActivity extends AppCompatActivity {
 
     private void populateRecyclerView() {
 
+        mProgressBar.setVisibility(View.VISIBLE);
+
         db.collection(COLLECTION_USER).document(mAuth.getCurrentUser().getUid()).collection(SUBCOLLECTION_TRIPS)
                 .get()
                 .addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
                     @Override
                     public void onComplete(@NonNull Task<QuerySnapshot> task) {
+
+                        mProgressBar.setVisibility(View.GONE);
+
                         if (task.isSuccessful()) {
                             for (QueryDocumentSnapshot document : task.getResult()) {
                                 Trip trip = new Trip();
@@ -108,6 +114,8 @@ public class TripHistoryActivity extends AppCompatActivity {
     }
 
     private void enableSwipeToDeleteAndUndo() {
+
+        // Allows user to delete trip by swiping the list item to the left
         SwipeToDeleteCallback swipeToDeleteCallback = new SwipeToDeleteCallback(this) {
             @Override
             public void onSwiped(@NonNull RecyclerView.ViewHolder viewHolder, int i) {
@@ -118,9 +126,9 @@ public class TripHistoryActivity extends AppCompatActivity {
 
                 mAdapter.removeItem(position);
 
-
+                // Gives user a chance to undo delete if it was done accidentally
                 Snackbar snackbar = Snackbar
-                        .make(coordinatorLayout, "Item was removed from the list.", Snackbar.LENGTH_LONG);
+                        .make(coordinatorLayout, "Trip was removed", Snackbar.LENGTH_LONG);
                 snackbar.setAction("UNDO", new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {

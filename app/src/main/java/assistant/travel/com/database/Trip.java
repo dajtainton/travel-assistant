@@ -19,7 +19,7 @@ package assistant.travel.com.database;
 import android.location.Location;
 
 /**
- * Trip Data Model
+ * Trip Model
  */
 
 public class Trip {

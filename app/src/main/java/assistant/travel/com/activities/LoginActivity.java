@@ -48,9 +48,6 @@ import butterknife.ButterKnife;
 
 public class LoginActivity extends AppCompatActivity {
 
-    private static final int REQUEST_SIGNUP = 0;
-    private ProgressDialog mProgressDialog;
-
     @BindView(R.id.input_username)
     EditText mUsername;
     @BindView(R.id.input_password)
@@ -65,6 +62,8 @@ public class LoginActivity extends AppCompatActivity {
     TextView mErrorText;
 
     private FirebaseAuth mAuth;
+    private static final int REQUEST_SIGNUP = 0;
+    private ProgressDialog mProgressDialog;
 
 
     // region AndroidLifecycle
@@ -111,14 +110,6 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     @Override
-    public void onStart() {
-        super.onStart();
-        // Check if user is signed in (non-null) and update UI accordingly.
-        FirebaseUser currentUser = mAuth.getCurrentUser();
-        //updateUI(currentUser);
-    }
-
-    @Override
     public void onResume() {
         super.onResume();
 
@@ -142,18 +133,21 @@ public class LoginActivity extends AppCompatActivity {
     public void handleLogin() {
         if (validate()) {
 
+            mProgressDialog.setMessage("Logging in...");
+            mProgressDialog.show();
+
             mAuth.signInWithEmailAndPassword(mUsername.getText().toString(), mPassword.getText().toString())
                     .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                         @Override
                         public void onComplete(@NonNull Task<AuthResult> task) {
+                            mProgressDialog.dismiss();
+
                             if (task.isSuccessful()) {
                                 // Sign in success, update UI with the signed-in user's information
                                 FirebaseUser user = mAuth.getCurrentUser();
                                 updateUI(user);
                             } else {
                                 // If sign in fails, display a message to the user.
-                                Toast.makeText(LoginActivity.this, "Authentication failed.",
-                                        Toast.LENGTH_SHORT).show();
                                 updateUI(null);
                             }
 
@@ -170,7 +164,7 @@ public class LoginActivity extends AppCompatActivity {
             startActivity(intent);
             finish();
         } else {
-            mErrorText.setText("Login Error!");
+            mErrorText.setText("Authentication Failed.");
             mErrorText.setVisibility(View.VISIBLE);
         }
 

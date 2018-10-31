@@ -84,7 +84,8 @@ public class SignupActivity extends AppCompatActivity {
         mLoginLink.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // Finish the registration screen and return to the Login activity
+
+                // Finish the registration screen and return to the login activity
                 Intent intent = new Intent(getApplicationContext(), LoginActivity.class);
                 startActivity(intent);
                 finish();
@@ -104,9 +105,9 @@ public class SignupActivity extends AppCompatActivity {
     public void onResume() {
         super.onResume();
 
-       /* mProgressDialog = new ProgressDialog(SignupActivity.this,
+        mProgressDialog = new ProgressDialog(SignupActivity.this,
                 R.style.AppTheme_Dark_Dialog);
-        mProgressDialog.setIndeterminate(true);*/
+        mProgressDialog.setIndeterminate(true);
     }
 
     @SuppressLint("StaticFieldLeak")
@@ -114,10 +115,16 @@ public class SignupActivity extends AppCompatActivity {
 
         if (validate()) {
 
+            mProgressDialog.setMessage("Setting up account...");
+            mProgressDialog.show();
+
             mAuth.createUserWithEmailAndPassword(mEmail.getText().toString(), mPassword.getText().toString())
                     .addOnCompleteListener(this, new OnCompleteListener<AuthResult>() {
                         @Override
                         public void onComplete(@NonNull Task<AuthResult> task) {
+
+                            mProgressDialog.dismiss();
+
                             if (task.isSuccessful()) {
                                 // Sign in success, update UI with the signed-in user's information
                                 FirebaseUser user = mAuth.getCurrentUser();
@@ -129,9 +136,7 @@ public class SignupActivity extends AppCompatActivity {
 
                                 updateUI(user, view);
                             } else {
-                                // If sign in fails, display a message to the user.
-                                Toast.makeText(SignupActivity.this, "Authentication failed.",
-                                        Toast.LENGTH_SHORT).show();
+                                // If sign in fails, display a message to the user
                                 updateUI(null, view);
                             }
 
